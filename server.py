@@ -1,6 +1,6 @@
+import base64
 import socket 
 from _thread import *
-import sys
 from collections import defaultdict as df
 import time
 
@@ -10,7 +10,6 @@ class Server:
         self.rooms = df(list)
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-
 
     def accept_connections(self, ip_address, port):
         self.ip_address = ip_address
@@ -35,6 +34,7 @@ class Server:
             connection.send("New Group created".encode())
         else:
             connection.send("Welcome to chat room".encode())
+            self.broadcast(user_id + " joined the room.", connection=connection, room_id=room_id)
 
         self.rooms[room_id].append(connection)
 
@@ -42,7 +42,7 @@ class Server:
             try:
                 message = connection.recv(1024)
                 print(str(message.decode()))
-                if message:
+                if message != "":
                     if str(message.decode()) == "FILE":
                         self.broadcastFile(connection, room_id, user_id)
 
@@ -53,8 +53,7 @@ class Server:
                 else:
                     self.remove(connection, room_id)
             except Exception as e:
-                print(repr(e))
-                print("Client disconnected earlier")
+                self.broadcast(user_id + " leave the room.", connection, room_id)
                 break
     
     
@@ -108,8 +107,8 @@ class Server:
 
 
 if __name__ == "__main__":
-    ip_address = "127.0.0.1"
-    port = 12345
-
+    ip_address = socket.gethostbyname(socket.gethostname())
+    port = int(input("Port: "))
+    print("ID of server: " + base64.b64encode(ip_address.encode() + b":" + str(port).encode()).decode())
     s = Server()
     s.accept_connections(ip_address, port)

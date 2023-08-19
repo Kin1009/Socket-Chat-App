@@ -1,58 +1,56 @@
+import base64
 import socket
-import tkinter as tk
-from tkinter import font
-from tkinter import ttk
-from tkinter import filedialog
+from tkinter import Tk, Toplevel, filedialog, CENTER, DISABLED, NORMAL, END
+from tkinter.ttk import *
+from tkinter.scrolledtext import ScrolledText
 import time
 import threading
 import os
-
 class GUI:
     
-    def __init__(self, ip_address, port):
+    def __init__(self):
         self.server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server.connect((ip_address, port))
 
-        self.Window = tk.Tk()
+        self.Window = Tk()
         self.Window.withdraw()
 
-        self.login = tk.Toplevel()
+        self.login = Toplevel()
 
         self.login.title("Login")
         self.login.resizable(width=False, height=False)
         self.login.configure(width=400, height=350)
 
-        self.pls = tk.Label(self.login, 
-                            text="Please Login to a chatroom", 
-                            justify=tk.CENTER,
-                            font="Helvetica 12 bold")
+        self.pls = Label(self.login, text="Please login to a chatroom", justify=CENTER)
+        self.pls.grid(column=0, row=0, columnspan=2)
+        Label(self.login, text="Server ID:").grid(column=0, row=1)
+        self.serverID = Entry(self.login, show="*")
+        self.serverID.grid(column=1, row=1)
 
-        self.pls.place(relheight=0.15, relx=0.2, rely=0.07)
+        self.userLabelName = Label(self.login, text="Username:")
+        self.userLabelName.grid(column=0, row=3)
 
-        self.userLabelName = tk.Label(self.login, text="Username: ", font="Helvetica 11")
-        self.userLabelName.place(relheight=0.2, relx=0.1, rely=0.25)
-
-        self.userEntryName = tk.Entry(self.login, font="Helvetica 12")
-        self.userEntryName.place(relwidth=0.4 ,relheight=0.1, relx=0.35, rely=0.30)
+        self.userEntryName = Entry(self.login)
+        self.userEntryName.grid(column=1, row=3)
         self.userEntryName.focus()
 
-        self.roomLabelName = tk.Label(self.login, text="Room Id: ", font="Helvetica 12")
-        self.roomLabelName.place(relheight=0.2, relx=0.1, rely=0.40)
+        self.roomLabelName = Label(self.login, text="Room ID:")
+        self.roomLabelName.grid(column=0, row=2)
 
-        self.roomEntryName = tk.Entry(self.login, font="Helvetica 11", show="*")
-        self.roomEntryName.place(relwidth=0.4 ,relheight=0.1, relx=0.35, rely=0.45)
+        self.roomEntryName = Entry(self.login, show="*")
+        self.roomEntryName.grid(column=1, row=2)
         
-        self.go = tk.Button(self.login, 
-                            text="CONTINUE", 
-                            font="Helvetica 12 bold", 
-                            command = lambda: self.goAhead(self.userEntryName.get(), self.roomEntryName.get()))
+        self.go = Button(self.login,
+                         width=30, 
+                            text="Continue",
+                            command = lambda: self.goAhead(self.serverID.get(), self.userEntryName.get(), self.roomEntryName.get()))
         
-        self.go.place(relx=0.35, rely=0.62)
+        self.go.grid(column=0, row=4, columnspan=2)
 
         self.Window.mainloop()
-
-
-    def goAhead(self, username, room_id=0):
+    def goAhead(self, server, username, room_id=0):
+        server = base64.b64decode(server.encode()).decode()
+        ip, port = server.split(":")
+        self.server.connect((ip, int(port)))
         self.name = username
         self.server.send(str.encode(username))
         time.sleep(0.1)
@@ -61,111 +59,52 @@ class GUI:
         self.login.destroy()
         self.layout()
 
-        rcv = threading.Thread(target=self.receive) 
+        rcv = threading.Thread(daemon=True, target=self.receive) 
         rcv.start()
 
-
+    def insert(self, text):
+        self.fileLocation.config(state="normal")
+        self.fileLocation.delete(0, END)
+        self.fileLocation.insert(END, text)
+        self.fileLocation.config(state="disabled")
     def layout(self):
         self.Window.deiconify()
         self.Window.title("CHATROOM")
         self.Window.resizable(width=False, height=False)
-        self.Window.configure(width=470, height=550, bg="#17202A")
-        self.chatBoxHead = tk.Label(self.Window, 
-                                    bg = "#17202A", 
-                                    fg = "#EAECEE", 
-                                    text = self.name , 
-                                    font = "Helvetica 11 bold", 
-                                    pady = 5)
+        self.Window.configure(width=470, height=550)
+        self.chatBoxHead = Label(self.Window, text = self.name)
 
-        self.chatBoxHead.place(relwidth = 1)
-
-        self.line = tk.Label(self.Window, width = 450, bg = "#ABB2B9") 
+        self.chatBoxHead.grid(column=0, row=0, columnspan=3)
 		
-        self.line.place(relwidth = 1, rely = 0.07, relheight = 0.012) 
+        self.textCons = ScrolledText(self.Window, 
+                                width=60, 
+                                height=30,
+                                font="Segoe 9") 
 		
-        self.textCons = tk.Text(self.Window, 
-                                width=20, 
-                                height=2, 
-                                bg="#17202A", 
-                                fg="#EAECEE", 
-                                font="Helvetica 11", 
-                                padx=5, 
-                                pady=5) 
+        self.textCons.grid(column=0, row=1, columnspan=3)
 		
-        self.textCons.place(relheight=0.745, relwidth=1, rely=0.08) 
-		
-        self.labelBottom = tk.Label(self.Window, bg="#ABB2B9", height=80) 
-		
-        self.labelBottom.place(relwidth = 1, 
-							    rely = 0.8) 
-		
-        self.entryMsg = tk.Entry(self.labelBottom, 
-                                bg = "#2C3E50", 
-                                fg = "#EAECEE", 
-                                font = "Helvetica 11")
-        self.entryMsg.place(relwidth = 0.74, 
-							relheight = 0.03, 
-							rely = 0.008, 
-							relx = 0.011) 
+        self.entryMsg = Entry(self.Window, width=60)
+        self.entryMsg.grid(column=0, row=2, columnspan=2)
         self.entryMsg.focus()
 
-        self.buttonMsg = tk.Button(self.labelBottom, 
+        self.buttonMsg = Button(self.Window, 
 								text = "Send", 
-								font = "Helvetica 10 bold", 
-								width = 20, 
-								bg = "#ABB2B9", 
 								command = lambda : self.sendButton(self.entryMsg.get())) 
-        self.buttonMsg.place(relx = 0.77, 
-							rely = 0.008, 
-							relheight = 0.03, 
-							relwidth = 0.22) 
-
-
-        self.labelFile = tk.Label(self.Window, bg="#ABB2B9", height=70) 
+        self.buttonMsg.grid(column=2, row=2)
 		
-        self.labelFile.place(relwidth = 1, 
-							    rely = 0.9) 
-		
-        self.fileLocation = tk.Label(self.labelFile, 
-                                text = "Choose file to send",
-                                bg = "#2C3E50", 
-                                fg = "#EAECEE", 
-                                font = "Helvetica 11")
-        self.fileLocation.place(relwidth = 0.65, 
-                                relheight = 0.03, 
-                                rely = 0.008, 
-                                relx = 0.011) 
+        self.fileLocation = Entry(self.Window, width=48)
+        self.fileLocation.config(state="disabled")
+        self.insert("Choose file to send")
+        self.fileLocation.grid(column=0, row=3) 
 
-        self.browse = tk.Button(self.labelFile, 
-								text = "Browse", 
-								font = "Helvetica 10 bold", 
-								width = 13, 
-								bg = "#ABB2B9", 
-								command = self.browseFile)
-        self.browse.place(relx = 0.67, 
-							rely = 0.008, 
-							relheight = 0.03, 
-							relwidth = 0.15) 
+        self.browse = Button(self.Window, text = "Browse", command = self.browseFile)
+        self.browse.grid(column=1, row=3)
 
-        self.sengFileBtn = tk.Button(self.labelFile, 
+        self.sengFileBtn = Button(self.Window, 
 								text = "Send", 
-								font = "Helvetica 10 bold", 
-								width = 13, 
-								bg = "#ABB2B9", 
 								command = self.sendFile)
-        self.sengFileBtn.place(relx = 0.84, 
-							rely = 0.008, 
-							relheight = 0.03, 
-							relwidth = 0.15)
-    
-
-        self.textCons.config(cursor = "arrow")
-        scrollbar = tk.Scrollbar(self.textCons) 
-        scrollbar.place(relheight = 1, 
-						relx = 0.974)
-
-        scrollbar.config(command = self.textCons.yview)
-        self.textCons.config(state = tk.DISABLED)
+        self.sengFileBtn.grid(column=2, row=3)
+        self.textCons.config(state = DISABLED)
 
 
     def browseFile(self):
@@ -175,36 +114,39 @@ class GUI:
                                                 "*.txt*"), 
                                                 ("all files", 
                                                 "*.*")))
-        self.fileLocation.configure(text="File Opened: "+ self.filename)
+        self.insert("File opened: "+ self.filename)
 
 
     def sendFile(self):
-        self.server.send("FILE".encode())
-        time.sleep(0.1)
-        self.server.send(str("client_" + os.path.basename(self.filename)).encode())
-        time.sleep(0.1)
-        self.server.send(str(os.path.getsize(self.filename)).encode())
-        time.sleep(0.1)
+        try:
+            self.server.send("FILE".encode())
+            time.sleep(0.1)
+            self.server.send(str("client_" + os.path.basename(self.filename)).encode())
+            time.sleep(0.1)
+            self.server.send(str(os.path.getsize(self.filename)).encode())
+            time.sleep(0.1)
+        except:
+            pass
 
         file = open(self.filename, "rb")
         data = file.read(1024)
         while data:
             self.server.send(data)
             data = file.read(1024)
-        self.textCons.config(state=tk.DISABLED)
-        self.textCons.config(state = tk.NORMAL)
-        self.textCons.insert(tk.END, "<You> "
+        self.textCons.config(state=DISABLED)
+        self.textCons.config(state = NORMAL)
+        self.textCons.insert(END, "<You> "
                                      + str(os.path.basename(self.filename)) 
                                      + " Sent\n\n")
-        self.textCons.config(state = tk.DISABLED) 
-        self.textCons.see(tk.END)
+        self.textCons.config(state = DISABLED) 
+        self.textCons.see(END)
 
 
     def sendButton(self, msg):
-        self.textCons.config(state = tk.DISABLED) 
+        self.textCons.config(state = DISABLED) 
         self.msg=msg 
-        self.entryMsg.delete(0, tk.END) 
-        snd= threading.Thread(target = self.sendMessage) 
+        self.entryMsg.delete(0, END) 
+        snd= threading.Thread(daemon=True, target = self.sendMessage) 
         snd.start() 
 
 
@@ -228,20 +170,21 @@ class GUI:
                             total = total + len(data)     
                             file.write(data)
                     
-                    self.textCons.config(state=tk.DISABLED)
-                    self.textCons.config(state = tk.NORMAL)
-                    self.textCons.insert(tk.END, "<" + str(send_user) + "> " + file_name + " Received\n\n")
-                    self.textCons.config(state = tk.DISABLED) 
-                    self.textCons.see(tk.END)
+                    self.textCons.config(state=DISABLED)
+                    self.textCons.config(state = NORMAL)
+                    self.textCons.insert(END, "<" + str(send_user) + "> " + file_name + " Received\n\n")
+                    self.textCons.config(state = DISABLED) 
+                    self.textCons.see(END)
 
                 else:
-                    self.textCons.config(state=tk.DISABLED)
-                    self.textCons.config(state = tk.NORMAL)
-                    self.textCons.insert(tk.END, 
-                                    message+"\n\n") 
+                        if message != "":
+                            self.textCons.config(state=DISABLED)
+                            self.textCons.config(state = NORMAL)
+                            self.textCons.insert(END, 
+                                            message+"\n\n") 
 
-                    self.textCons.config(state = tk.DISABLED) 
-                    self.textCons.see(tk.END)
+                            self.textCons.config(state = DISABLED) 
+                            self.textCons.see(END)
 
             except: 
                 print("An error occured!") 
@@ -249,20 +192,18 @@ class GUI:
                 break
 
     def sendMessage(self):
-        self.textCons.config(state=tk.DISABLED) 
+        self.textCons.config(state=DISABLED) 
         while True:  
             self.server.send(self.msg.encode())
-            self.textCons.config(state = tk.NORMAL)
-            self.textCons.insert(tk.END, 
+            self.textCons.config(state = NORMAL)
+            self.textCons.insert(END, 
                             "<You> " + self.msg + "\n\n") 
 
-            self.textCons.config(state = tk.DISABLED) 
-            self.textCons.see(tk.END)
+            self.textCons.config(state = DISABLED) 
+            self.textCons.see(END)
             break
 
 
 
 if __name__ == "__main__":
-    ip_address = "127.0.0.1"
-    port = 12345
-    g = GUI(ip_address, port)
+    g = GUI()
